@@ -157,6 +157,10 @@ class GTSAM_EXPORT HybridGaussianFactor : public HybridFactor {
    */
   virtual HybridGaussianProductFactor asProductFactor() const;
 
+  /// Restrict the factor to the given discrete values.
+  std::shared_ptr<Factor> restrict(
+      const DiscreteValues &discreteValues) const override;
+
   /// @}
 
  private:
@@ -176,7 +180,7 @@ class GTSAM_EXPORT HybridGaussianFactor : public HybridFactor {
   // Private constructor using ConstructorHelper above.
   HybridGaussianFactor(const ConstructorHelper &helper);
 
-#ifdef GTSAM_ENABLE_BOOST_SERIALIZATION
+#if GTSAM_ENABLE_BOOST_SERIALIZATION
   /** Serialization function */
   friend class boost::serialization::access;
   template <class ARCHIVE>

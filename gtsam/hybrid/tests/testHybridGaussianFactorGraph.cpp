@@ -25,6 +25,7 @@
 #include <gtsam/discrete/DecisionTreeFactor.h>
 #include <gtsam/discrete/DiscreteKey.h>
 #include <gtsam/discrete/DiscreteValues.h>
+#include <gtsam/discrete/TableDistribution.h>
 #include <gtsam/hybrid/HybridBayesNet.h>
 #include <gtsam/hybrid/HybridConditional.h>
 #include <gtsam/hybrid/HybridFactor.h>
@@ -45,6 +46,7 @@
 
 #include "Switching.h"
 #include "TinyHybridExample.h"
+#include "DiscreteFixture.h"
 
 using namespace std;
 using namespace gtsam;
@@ -92,18 +94,9 @@ TEST(HybridGaussianFactorGraph, EliminateSequential) {
 }
 
 /* ************************************************************************* */
-
-namespace two {
-std::vector<GaussianFactor::shared_ptr> components(Key key) {
-  return {std::make_shared<JacobianFactor>(key, I_3x3, Z_3x1),
-          std::make_shared<JacobianFactor>(key, I_3x3, Vector3::Ones())};
-}
-}  // namespace two
-
-/* ************************************************************************* */
 TEST(HybridGaussianFactorGraph, hybridEliminationOneFactor) {
   HybridGaussianFactorGraph hfg;
-  hfg.add(HybridGaussianFactor(m1, two::components(X(1))));
+  hfg.add(HybridGaussianFactor(m1, two_component_fixture::components(X(1))));
 
   auto result = hfg.eliminate({X(1)});
 
@@ -114,10 +107,10 @@ TEST(HybridGaussianFactorGraph, hybridEliminationOneFactor) {
   EXPECT(HybridConditional::CheckInvariants(*result.first, values));
 
   // Check that factor is discrete and correct
-  auto factor = std::dynamic_pointer_cast<DecisionTreeFactor>(result.second);
+  auto factor = std::dynamic_pointer_cast<TableFactor>(result.second);
   CHECK(factor);
   // regression test
-  EXPECT(assert_equal(DecisionTreeFactor{m1, "1 1"}, *factor, 1e-5));
+  EXPECT(assert_equal(TableFactor{m1, "1 1"}, *factor, 1e-5));
 }
 
 /* ************************************************************************* */
@@ -131,7 +124,7 @@ TEST(HybridGaussianFactorGraph, eliminateFullSequentialEqualChance) {
   hfg.add(JacobianFactor(X(0), I_3x3, X(1), -I_3x3, Z_3x1));
 
   // Add a hybrid gaussian factor ϕ(x1, c1)
-  hfg.add(HybridGaussianFactor(m1, two::components(X(1))));
+  hfg.add(HybridGaussianFactor(m1, two_component_fixture::components(X(1))));
 
   auto result = hfg.eliminateSequential();
 
@@ -152,7 +145,7 @@ TEST(HybridGaussianFactorGraph, eliminateFullSequentialSimple) {
   // Add factor between x0 and x1
   hfg.add(JacobianFactor(X(0), I_3x3, X(1), -I_3x3, Z_3x1));
 
-  hfg.add(HybridGaussianFactor(m1, two::components(X(1))));
+  hfg.add(HybridGaussianFactor(m1, two_component_fixture::components(X(1))));
 
   // Discrete probability table for c1
   hfg.add(DecisionTreeFactor(m1, {2, 8}));
@@ -329,7 +322,7 @@ TEST(HybridBayesNet, Switching) {
 
   // Check the remaining factor for x1
   CHECK(factor_x1);
-  auto phi_x1 = std::dynamic_pointer_cast<DecisionTreeFactor>(factor_x1);
+  auto phi_x1 = std::dynamic_pointer_cast<TableFactor>(factor_x1);
   CHECK(phi_x1);
   EXPECT_LONGS_EQUAL(1, phi_x1->keys().size());  // m0
   // We can't really check the error of the decision tree factor phi_x1, because
@@ -436,7 +429,7 @@ TEST(HybridGaussianFactorGraph, Optimize) {
 
   hfg.add(JacobianFactor(X(0), I_3x3, Z_3x1));
   hfg.add(JacobianFactor(X(0), I_3x3, X(1), -I_3x3, Z_3x1));
-  hfg.add(HybridGaussianFactor(m1, two::components(X(1))));
+  hfg.add(HybridGaussianFactor(m1, two_component_fixture::components(X(1))));
 
   auto result = hfg.eliminateSequential();
 
@@ -650,7 +643,7 @@ TEST(HybridGaussianFactorGraph, EliminateTiny1) {
       mode, std::vector{conditional0, conditional1});
 
   // Add prior on mode.
-  expectedBayesNet.emplace_shared<DiscreteConditional>(mode, "74/26");
+  expectedBayesNet.emplace_shared<TableDistribution>(mode, "74 26");
 
   // Test elimination
   const auto posterior = fg.eliminateSequential();
@@ -700,11 +693,11 @@ TEST(HybridGaussianFactorGraph, EliminateTiny1Swapped) {
       m1, std::vector{conditional0, conditional1});
 
   // Add prior on m1.
-  expectedBayesNet.emplace_shared<DiscreteConditional>(m1, "1/1");
+  expectedBayesNet.emplace_shared<TableDistribution>(m1, "0.188638 0.811362");
 
   // Test elimination
   const auto posterior = fg.eliminateSequential();
-  // EXPECT(assert_equal(expectedBayesNet, *posterior, 0.01));
+  EXPECT(assert_equal(expectedBayesNet, *posterior, 0.01));
 
   EXPECT(ratioTest(bn, measurements, *posterior));
 
@@ -736,7 +729,9 @@ TEST(HybridGaussianFactorGraph, EliminateTiny2) {
       mode, std::vector{conditional0, conditional1});
 
   // Add prior on mode.
-  expectedBayesNet.emplace_shared<DiscreteConditional>(mode, "23/77");
+  // Since this is the only discrete conditional, it is added as a
+  // TableDistribution.
+  expectedBayesNet.emplace_shared<TableDistribution>(mode, "23 77");
 
   // Test elimination
   const auto posterior = fg.eliminateSequential();

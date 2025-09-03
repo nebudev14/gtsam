@@ -127,6 +127,9 @@ class GTSAM_EXPORT DiscreteFactorGraph
   template <class DERIVED_FACTOR>
   DiscreteFactorGraph(const FactorGraph<DERIVED_FACTOR>& graph) : Base(graph) {}
 
+  /// Destructor
+  virtual ~DiscreteFactorGraph() {}
+
   /// @name Testable
   /// @{
 
@@ -134,6 +137,7 @@ class GTSAM_EXPORT DiscreteFactorGraph
 
   /// @}
 
+  //TODO(Varun): Make compatible with TableFactor
   /** Add a decision-tree factor */
   template <typename... Args>
   void add(Args&&... args) {
@@ -147,7 +151,16 @@ class GTSAM_EXPORT DiscreteFactorGraph
   DiscreteKeys discreteKeys() const;
 
   /** return product of all factors as a single factor */
-  DecisionTreeFactor product() const;
+  DiscreteFactor::shared_ptr product() const;
+
+  /**
+   * @brief Return product of all `factors` as a single factor,
+   * which is scaled by the max value to prevent underflow
+   *
+   * @param factors The factors to multiply as a DiscreteFactorGraph.
+   * @return DiscreteFactor::shared_ptr
+   */
+  DiscreteFactor::shared_ptr scaledProduct() const;
 
   /** 
    * Evaluates the factor graph given values, returns the joint probability of

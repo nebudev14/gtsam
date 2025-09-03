@@ -1,4 +1,4 @@
-# README - Georgia Tech Smoothing and Mapping Library
+# GTSAM: Georgia Tech Smoothing and Mapping Library
 
 **Important Note**
 
@@ -13,14 +13,13 @@ mapping (SAM) in robotics and vision, using Factor Graphs and Bayes
 Networks as the underlying computing paradigm rather than sparse
 matrices.
 
-The current support matrix is:
 
-| Platform           | Compiler  | Build Status                                                                     |
-|:------------------:|:---------:|:--------------------------------------------------------------------------------:|
-| Ubuntu 20.04/22.04 | gcc/clang | ![Linux CI](https://github.com/borglab/gtsam/workflows/Linux%20CI/badge.svg)     |
-| macOS              | clang     | ![macOS CI](https://github.com/borglab/gtsam/workflows/macOS%20CI/badge.svg)     |
-| Windows            | MSVC      | ![Windows CI](https://github.com/borglab/gtsam/workflows/Windows%20CI/badge.svg) |
-
+<!-- Main CI Badges (develop branch) -->
+| CI Status | Platform | Compiler |
+|:----------|:---------|:---------|
+| [![Python CI](https://github.com/borglab/gtsam/actions/workflows/build-python.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/build-python.yml?query=branch%3Adevelop) | Ubuntu 22.04, MacOS 13-14, Windows | gcc/clang,MSVC |
+| [![vcpkg](https://github.com/borglab/gtsam/actions/workflows/vcpkg.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/vcpkg.yml?query=branch%3Adevelop) | Latest Windows/Ubuntu/Mac | - |
+| [![Build Wheels for Develop](https://github.com/borglab/gtsam/actions/workflows/build-cibw.yml/badge.svg?branch=develop)](https://github.com/borglab/gtsam/actions/workflows/build-cibw.yml?query=branch%3Adevelop) | See [pypi files](https://pypi.org/project/gtsam-develop/#files); no Windows| - |
 
 On top of the C++ library, GTSAM includes [wrappers for MATLAB & Python](#wrappers).
 
@@ -34,15 +33,29 @@ In the root library folder execute:
 mkdir build
 cd build
 cmake ..
-make check (optional, runs unit tests)
+make check  # optional, runs all unit tests
 make install
 ```
 
 Prerequisites:
 
-- [Boost](http://www.boost.org/users/download/) >= 1.65 (Ubuntu: `sudo apt-get install libboost-all-dev`)
-- [CMake](http://www.cmake.org/cmake/resources/software.html) >= 3.0 (Ubuntu: `sudo apt-get install cmake`)
-- A modern compiler, i.e., at least gcc 4.7.3 on Linux.
+- A modern compiler:
+    - Mac: at least xcode-14.2
+    - Linux: at least clang-11 or gcc-9
+    - Windows: at least msvc-14.2
+- [CMake](http://www.cmake.org/cmake/resources/software.html) >= 3.0
+    - Ubuntu: `sudo apt-get install cmake`
+
+Optional Boost prerequisite:
+
+Boost is now *optional*. Two cmake flags govern its behavior:
+ - `GTSAM_USE_BOOST_FEATURES` = `ON|OFF`: some of our timers and concept checking in the tests still depend on boost.
+ - `GTSAM_ENABLE_BOOST_SERIALIZATION` = `ON|OFF`: serialization of factor graphs, factors, etc still is done using boost
+
+If one or both of these flags are `ON`, you need to install [Boost](http://www.boost.org/users/download/) >= 1.70
+    - Mac: `brew install boost`
+    - Ubuntu: `sudo apt-get install libboost-all-dev`
+    - Windows: We highly recommend using the [vcpkg](https://github.com/microsoft/vcpkg) package manager. For other installation methods or troubleshooting, please see the guidance in the [cmake/HandleBoost.cmake](cmake/HandleBoost.cmake) script.
 
 Optional prerequisites - used automatically if findable by CMake:
 
@@ -54,6 +67,9 @@ Optional prerequisites - used automatically if findable by CMake:
 ## GTSAM 4 Compatibility
 
 GTSAM 4 introduces several new features, most notably Expressions and a Python toolbox. It also introduces traits, a C++ technique that allows optimizing with non-GTSAM types. That opens the door to retiring geometric types such as Point2 and Point3 to pure Eigen types, which we also do. A significant change which will not trigger a compile error is that zero-initializing of Point2 and Point3 is deprecated, so please be aware that this might render functions using their default constructor incorrect.
+
+ There is a flag `GTSAM_ALLOW_DEPRECATED_SINCE_V43` for newly deprecated methods since the 4.3 release, which is on by default, allowing anyone to just pull version 4.3 and compile.
+
 
 ## Wrappers
 
@@ -115,9 +131,9 @@ In GTSAM 4 a new and more efficient implementation, based on integrating on the 
 
 ## Additional Information
 
-There is a [`GTSAM users Google group`](https://groups.google.com/forum/#!forum/gtsam-users) for general discussion.
+There is a [GTSAM users Google group](https://groups.google.com/forum/#!forum/gtsam-users) for general discussion.
 
-Read about important [`GTSAM-Concepts`](GTSAM-Concepts.md) here. A primer on GTSAM Expressions,
+Read about important [GTSAM-Concepts](doc/GTSAM-Concepts.md) here. A primer on GTSAM Expressions,
 which support (superfast) automatic differentiation,
 can be found on the [GTSAM wiki on BitBucket](https://bitbucket.org/gtborg/gtsam/wiki/Home).
 

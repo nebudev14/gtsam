@@ -35,7 +35,7 @@ using Velocity3 = Vector3;
  * NOTE: While Barrau20icra follow a R,v,t order,
  * we use a R,t,v order to maintain backwards compatibility.
  */
-class GTSAM_EXPORT NavState : public LieGroup<NavState, 9> {
+class GTSAM_EXPORT NavState : public MatrixLieGroup<NavState, 9, 5> {
  private:
 
   // TODO(frank):
@@ -45,9 +45,8 @@ class GTSAM_EXPORT NavState : public LieGroup<NavState, 9> {
   Velocity3 v_; ///< velocity n_v in nav frame
 
 public:
-
-  inline constexpr static auto dimension = 9;
-
+  using LieAlgebra = Matrix5;
+  using Vector25 = Eigen::Matrix<double, 25, 1>;
 
   /// @name Constructors
   /// @{
@@ -56,18 +55,27 @@ public:
   NavState() :
       t_(0, 0, 0), v_(Vector3::Zero()) {
   }
+
   /// Construct from attitude, position, velocity
   NavState(const Rot3& R, const Point3& t, const Velocity3& v) :
       R_(R), t_(t), v_(v) {
   }
+
   /// Construct from pose and velocity
   NavState(const Pose3& pose, const Velocity3& v) :
       R_(pose.rotation()), t_(pose.translation()), v_(v) {
   }
+
   /// Construct from SO(3) and R^6
   NavState(const Matrix3& R, const Vector6& tv) :
       R_(R), t_(tv.head<3>()), v_(tv.tail<3>()) {
   }
+
+  /// Construct from Matrix5
+  NavState(const Matrix5& T) :
+    R_(T.block<3, 3>(0, 0)), t_(T.block<3, 1>(0, 3)), v_(T.block<3, 1>(0, 4)) {
+  }
+
   /// Named constructor with derivatives
   static NavState Create(const Rot3& R, const Point3& t, const Velocity3& v,
                          OptionalJacobian<9, 3> H1 = {},
@@ -118,6 +126,9 @@ public:
   /// nTb = [nRb n_t n_v; 0_1x3 1 0; 0_1x3 0 1]
   Matrix5 matrix() const;
 
+  /// Vectorize 5x5 matrix into a 25-dim vector.
+  Vector25 vec(OptionalJacobian<25, 9> H = {}) const;
+
   /// @}
   /// @name Testable
   /// @{
@@ -154,10 +165,6 @@ public:
   /// Syntactic sugar
   const Rot3& rotation() const { return attitude(); };
 
-  /// @}
-  /// @name Lie Group
-  /// @{
-
   // Tangent space sugar.
   // TODO(frank): move to private navstate namespace in cpp
   static Eigen::Block<Vector9, 3, 1> dR(Vector9& v) {
@@ -188,6 +195,10 @@ public:
   Vector9 localCoordinates(const NavState& g, //
       OptionalJacobian<9, 9> H1 = {}, OptionalJacobian<9, 9> H2 =
           {}) const;
+
+  /// @}
+  /// @name Lie Group
+  /// @{
 
   /**
    * Exponential map at identity - create a NavState from canonical coordinates
@@ -246,6 +257,9 @@ public:
   static Matrix9 ExpmapDerivative(const Vector9& xi);
 
   /// Derivative of Logmap
+  static Matrix9 LogmapDerivative(const Vector9& xi);
+
+  /// Derivative of Logmap, NavState version
   static Matrix9 LogmapDerivative(const NavState& xi);
 
   // Chart at origin, depends on compile-time flag GTSAM_POSE3_EXPMAP
@@ -253,6 +267,12 @@ public:
     static NavState Retract(const Vector9& xi, ChartJacobian Hxi = {});
     static Vector9 Local(const NavState& state, ChartJacobian Hstate = {});
   };
+
+  /// Hat maps from tangent vector to Lie algebra
+  static Matrix5 Hat(const Vector9& xi);
+
+  /// Vee maps from Lie algebra to tangent vector
+  static Vector9 Vee(const Matrix5& X);
 
   /// @}
   /// @name Dynamics
@@ -281,7 +301,7 @@ public:
 private:
   /// @{
   /// serialization
-#ifdef GTSAM_ENABLE_BOOST_SERIALIZATION  ///
+#if GTSAM_ENABLE_BOOST_SERIALIZATION  ///
   friend class boost::serialization::access;
   template<class ARCHIVE>
   void serialize(ARCHIVE & ar, const unsigned int /*version*/) {
@@ -295,9 +315,9 @@ private:
 
 // Specialize NavState traits to use a Retract/Local that agrees with IMUFactors
 template <>
-struct traits<NavState> : public internal::LieGroup<NavState> {};
+struct traits<NavState> : public internal::MatrixLieGroup<NavState, 5> {};
 
 template <>
-struct traits<const NavState> : public internal::LieGroup<NavState> {};
+struct traits<const NavState> : public internal::MatrixLieGroup<NavState, 5> {};
 
 } // namespace gtsam
